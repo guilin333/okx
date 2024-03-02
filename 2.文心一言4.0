@@ -1,0 +1,42 @@
+import asyncio  
+import json  
+import websockets  
+  
+# WebSocket连接URL  
+WEBSOCKET_URL = "wss://ws.okx.com:8443/ws/v5/public"  
+  
+# 存储接收到的数据的变量  
+received_data = []  
+  
+async def on_message(message):  
+    # 处理接收到的消息  
+    print(f"Received message: {message}")  
+    data = json.loads(message)  
+    # 根据你的需要处理数据，例如添加到received_data列表中  
+    if "data" in data:  
+        received_data.append(data["data"])  
+  
+async def subscribe_and_receive_data():  
+    async with websockets.connect(WEBSOCKET_URL) as websocket:  
+        # 发送订阅请求  
+        subscribe_request = {  
+            "op": "subscribe",  
+            "args": [  
+                {  
+                    "channel": "tickers",  
+                    "instType": "SWAP"  
+                },  
+                {  
+                    "channel": "candle1m",  
+                    "instId": "LTC-USD-200327"  
+                }  
+            ]  
+        }  
+        await websocket.send(json.dumps(subscribe_request))  
+  
+        # 接收WebSocket消息  
+        async for message in websocket:  
+            await on_message(message)  
+  
+# 运行事件循环和订阅函数  
+asyncio.run(subscribe_and_receive_data())
