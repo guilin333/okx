@@ -1,0 +1,27 @@
+import asyncio  
+import websockets  
+import json  
+  
+async def okex_websocket_client():  
+    uri = "wss://real.okex.com:8443/ws/v3"  # OKEx WebSocket 服务器地址  
+    params = {  
+        "op": "subscribe",  
+        "channel": "spot/ticker:btcusdt"  # 订阅BTC/USDT的ticker行情，可以修改为您需要的币种对  
+    }  
+  
+    async with websockets.connect(uri) as websocket:  
+        # 发送订阅请求  
+        await websocket.send(json.dumps(params))  
+  
+        # 接收并处理消息  
+        async for message in websocket:  
+            data = json.loads(message)  
+            # 处理接收到的数据，这里只是简单地打印出来  
+            if data.get('event') == 'subscribe':  
+                print("Subscribed to channel:", data.get('channel'))  
+            elif data.get('event') == 'ticker':  
+                print("Ticker Data Received:", data)  
+                # 在这里，您可以根据需要处理ticker数据，例如更新界面、进行交易决策等  
+  
+# 运行异步客户端  
+asyncio.run(okex_websocket_client())
