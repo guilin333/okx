@@ -1,0 +1,55 @@
+import asyncio
+import json
+
+import okx.MarketData as MarketData
+import websockets
+
+
+def api_data():
+    """
+    
+    :return: 发送订阅请求所需的数据
+    """
+    flag = "0"  # 实盘:0 , 模拟盘：1
+    market_data_api = MarketData.MarketAPI(flag=flag)  # 建立市场API
+    result = market_data_api.get_tickers(instType="SWAP")  # 获取所有产品行情信息
+
+    # 数据处理
+    bi_usdt = []
+    result = result["data"]
+    for ticker in result:
+        if "USDT" in ticker["instId"]:
+            bi_usdt.append(ticker["instId"])
+    x = []
+    for i in bi_usdt:
+        moxing = {'channel': 'bbo-tbt', 'instId': i}
+        x.append(moxing)
+    return x
+
+
+# WebSocket连接URL
+WEBSOCKET_URL = "wss://ws.okx.com:8443/ws/v5/public"
+
+
+async def subscribe_and_receive_data():
+    h = {}
+    async with websockets.connect(WEBSOCKET_URL) as websocket:
+        # 发送订阅请求
+        subscribe_request = {
+            "op": "subscribe",
+            "args": api_data()}
+        await websocket.send(json.dumps(subscribe_request))
+
+        # 接收WebSocket消息
+        async for message in websocket:
+            d = json.loads(message)
+            try:
+                # print(d["arg"]["instId"], d["data"][0]["bids"][0][0])
+                h[d["arg"]["instId"]] = d["data"][0]["bids"][0][0]
+                print(d)
+            except KeyError:
+                continue
+            # 运行事件循环和订阅函数
+
+
+asyncio.run(subscribe_and_receive_data())
