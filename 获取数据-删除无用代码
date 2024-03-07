@@ -1,0 +1,63 @@
+import asyncio
+import json
+import time
+
+import okx.MarketData as MarketData
+import websockets
+
+
+def api_data():
+    """
+    :return: 发送订阅请求所需的数据
+    """
+    flag = "1"  # 实盘:0 , 模拟盘：1
+    market_data_api = MarketData.MarketAPI(flag=flag)
+    result = market_data_api.get_tickers(instType="SWAP")
+    bi_usdt = [ticker["instId"] for ticker in result["data"] if "USDT" in ticker["instId"]]
+    return [{'channel': 'bbo-tbt', 'instId': i} for i in bi_usdt]
+
+
+# WebSocket连接URL
+WEBSOCKET_URL = "wss://wspap.okx.com:8443/ws/v5/public?brokerId=9999"
+
+
+async def subscribe_and_receive_data():
+    h = {}
+
+    # 创建WebSocket连接，并设置心跳机制
+    async with websockets.connect(WEBSOCKET_URL, ping_timeout=600, ping_interval=29) as websocket:
+        # 发送订阅请求
+        subscribe_request = {
+            "op": "subscribe",
+            "args": api_data()
+        }
+        await websocket.send(json.dumps(subscribe_request))
+
+        # 创建任务来异步输出h变量的内容
+        print_task = asyncio.create_task(print_h_async(h))
+
+        # 接收WebSocket消息
+        try:
+            async for message in websocket:
+                d = json.loads(message)
+                try:
+                    h[d["arg"]["instId"]] = d["data"][0]["bids"][0][0]
+                except Exception:
+                    print("发生错误")
+                    continue
+        except websockets.exceptions.ConnectionClosedError:
+            print("Connection closed, reconnecting...")
+            await subscribe_and_receive_data()
+
+        # 等待输出任务完成
+        await print_task
+
+
+async def print_h_async(h):
+    while True:
+        print(h)
+        await asyncio.sleep(0)  # 每0秒输出一次h变量的内容
+
+
+# 运行事件循环和订阅函数
+asyncio.run(subscribe_and_receive_data())
