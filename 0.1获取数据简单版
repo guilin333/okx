@@ -1,0 +1,26 @@
+import asyncio
+import websockets
+import json
+
+
+# websoclets连接USL
+websockets_USL = "wss://wspap.okx.com:8443/ws/v5/public?brokerId=9999"
+
+# 发送订阅请求
+async def dingyue():
+    async with websockets.connect(websockets_USL) as websocket:
+        fasong = {
+            "op": "subscribe",
+            "args": [
+                # {"channel": "tickers", "instId": "BTC-USDT-SWAP"},
+                {"channel": "bbo-tbt", "instId": "BTC-USDT-SWAP"},
+            ]
+        }
+        await websocket.send(json.dumps(fasong))
+        # 接收消息
+        async for i in websocket:
+            print(i)
+
+
+if __name__ == '__main__':
+    asyncio.run(dingyue())
